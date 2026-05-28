@@ -5,18 +5,17 @@ ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONPATH=/app
 
-# Prevent root usage
+# ---- Create non-root user ----
 RUN useradd -m appuser
 
 WORKDIR /app
 
-# ---- Install system security updates ----
+# ---- System security updates (reduce CVEs slightly) ----
 RUN apt-get update && apt-get upgrade -y && \
-    apt-get install -y --no-install-recommends \
-    curl \
-    && rm -rf /var/lib/apt/lists/*
+    apt-get install -y --no-install-recommends curl && \
+    rm -rf /var/lib/apt/lists/*
 
-# ---- Install dependencies first (better caching) ----
+# ---- Dependencies layer (cached) ----
 COPY requirements.txt .
 
 RUN pip install --no-cache-dir --upgrade pip && \
@@ -25,13 +24,13 @@ RUN pip install --no-cache-dir --upgrade pip && \
 # ---- Copy source code ----
 COPY src ./src
 
-# ---- Ownership + security ----
+# ---- Fix permissions ----
 RUN chown -R appuser:appuser /app
 
 USER appuser
 
-# ---- Expose port ----
+# ---- Security: explicit port ----
 EXPOSE 8002
 
-# ---- Run app securely ----
+# ---- Runtime ----
 CMD ["uvicorn", "src.appointment_service.main:app", "--host", "0.0.0.0", "--port", "8002"]
